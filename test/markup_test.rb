@@ -51,7 +51,9 @@ class MarkupTest < Minitest::Test
     markup = readme.split('/').last.gsub(/^README\./, '')
 
     define_method "test_#{markup}" do
-      skip "Skipping MediaWiki test because wikicloth is currently not compatible with JRuby." if markup == "mediawiki" && RUBY_PLATFORM == "java"
+      if markup == "mediawiki" && RUBY_PLATFORM == "java"
+        skip "Skipping MediaWiki test because wikicloth is currently not compatible with JRuby."
+      end
       source = File.read(readme)
       expected_file = "#{readme}.html"
       expected = File.read(expected_file).rstrip
@@ -91,6 +93,20 @@ class MarkupTest < Minitest::Test
     assert_equal "restructuredtext", GitHub::Markup.renderer('README.rst', 'Title').name
     assert_equal "pod", GitHub::Markup.renderer('README.pod', '=head1').name
     assert_equal "pod6", GitHub::Markup.renderer('README.pod6', '=begin pod').name
+  end
+
+  def test_manpage_rendering
+    fixtures = File.expand_path("../fixtures", __FILE__)
+    mdoc = GitHub::Markup.render_s(GitHub::Markups::MARKUP_MANPAGE, File.read(fixtures + "/test.mdoc"))
+    mdoc = Nokogiri::HTML(mdoc)
+    h1 = mdoc.css("h1")
+    assert_equal 2, h1.length
+    assert_match "NAME", h1[0].content.strip
+    assert_match /^SEE\s+ALSO$/, h1[1].content.strip
+    rows = mdoc.css("body > table:last-child th + td")
+    assert_equal "MDOC-TEST(1)", rows[0].content
+    assert_equal "General Commands Manual", rows[1].content
+    assert_equal "GitHub", rows[2].content
   end
 
   def test_rendering_by_symbol
